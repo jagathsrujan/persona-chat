@@ -1,0 +1,21 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+
+.venv/
+tools/
+temp/
+
+# Private persona assets. Keep these local.
+persona.txt
+Modelfile
+voice_samples/*
+!voice_samples/.gitkeep
+
+# Local model/audio caches.
+*.wav
+*.ogg
+*.opus
+*.mp3
+*.m4a
+*.flac

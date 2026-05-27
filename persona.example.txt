@@ -1,0 +1,6 @@
+Put raw text written by the target persona here, ideally one message per line.
+
+Example:
+hey are you free now?
+idk maybe tomorrow
+that sounds nice actually
