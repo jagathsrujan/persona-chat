@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
-BASE_DIR = Path(__file__).resolve().parent
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+if getattr(sys, "frozen", False):
+    APP_DATA_DIR = Path.home() / "Library" / "Application Support" / "Persona Chat"
+else:
+    APP_DATA_DIR = RESOURCE_DIR
+
+BASE_DIR = APP_DATA_DIR
 CACHE_DIR = BASE_DIR / "temp" / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 os.environ.setdefault("HF_HOME", str(CACHE_DIR / "huggingface"))
@@ -20,6 +27,7 @@ class Config:
 
     Attributes:
         BASE_DIR: Absolute path to the project directory.
+        RESOURCE_DIR: Read-only bundled source/resource directory.
         OLLAMA_MODEL_NAME: Name of the custom Ollama persona model.
         OLLAMA_BASE_MODEL: Base Ollama model used to build the persona model.
         OLLAMA_HOST: Local Ollama HTTP endpoint.
@@ -45,6 +53,7 @@ class Config:
     """
 
     BASE_DIR: Path = field(default_factory=lambda: BASE_DIR)
+    RESOURCE_DIR: Path = field(default_factory=lambda: RESOURCE_DIR)
 
     OLLAMA_MODEL_NAME: str = "mypersona"
     OLLAMA_BASE_MODEL: str = "llama3.1:8b"

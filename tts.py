@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Iterable
 
 import sounddevice as sd
 import soundfile as sf
@@ -146,19 +147,19 @@ class PersonaTTS:
         normalized = re.sub(r"\s+([?.!,])", r"\1", normalized)
         return normalized
 
-    def speak(self, text: str) -> None:
+    def speak(self, text: str) -> bool:
         """Synthesize text to a WAV file and play it through the speakers.
 
         Args:
             text: Persona reply text to synthesize.
 
         Returns:
-            None.
+            True when synthesis and playback completed, otherwise False.
         """
 
         cleaned = self.clean_text(text)
         if not cleaned:
-            return
+            return True
 
         CONFIG.TEMP_DIR.mkdir(parents=True, exist_ok=True)
         try:
@@ -169,10 +170,12 @@ class PersonaTTS:
                 file_path=str(CONFIG.TTS_OUTPUT_PATH),
             )
             self._play_audio(CONFIG.TTS_OUTPUT_PATH)
+            return True
         except Exception as exc:
             print(f"TTS error: {exc}")
             print(f"Generated audio is still saved at: {CONFIG.TTS_OUTPUT_PATH}")
             print("Run `python main.py --list-devices` to inspect audio output devices.")
+            return False
 
     def _play_audio(self, wav_path: Path) -> None:
         """Play a synthesized WAV file using the configured playback backend.
@@ -238,24 +241,33 @@ def play_test_beep(
     player.playback_backend = playback_backend
     player._play_audio(beep_path)
 
-    @staticmethod
-    def preprocess_voice_sample(raw_audio_path: Path, output_path: Path) -> bool:
-        """Convert and normalize a raw voice sample for XTTS-v2.
 
-        Args:
-            raw_audio_path: Path to any ffmpeg-readable source audio file.
-            output_path: Destination path for a 22050 Hz mono WAV file.
+def preprocess_voice_sample(raw_audio_paths: Path | Iterable[Path], output_path: Path) -> bool:
+    """Convert and normalize one or more raw voice samples for XTTS-v2.
 
-        Returns:
-            True on success, False when ffmpeg fails.
-        """
+    Args:
+        raw_audio_paths: One path, or multiple ffmpeg-readable source audio files.
+        output_path: Destination path for a 22050 Hz mono WAV file.
 
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+    Returns:
+        True on success, False when ffmpeg fails.
+    """
+
+    if isinstance(raw_audio_paths, Path):
+        sources = [raw_audio_paths]
+    else:
+        sources = list(raw_audio_paths)
+    if not sources:
+        print("No voice sample files were provided.")
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if len(sources) == 1:
         command = [
             "ffmpeg",
             "-y",
             "-i",
-            str(raw_audio_path),
+            str(sources[0]),
             "-ar",
             "22050",
             "-ac",
@@ -264,14 +276,39 @@ def play_test_beep(
             "silenceremove=1:0:-50dB,loudnorm",
             str(output_path),
         ]
-        try:
-            subprocess.run(command, check=True, capture_output=True, text=True)
-        except FileNotFoundError:
-            print("ffmpeg was not found. Install it with `brew install ffmpeg` and try again.")
-            return False
-        except subprocess.CalledProcessError as exc:
-            print(f"ffmpeg failed while preprocessing the voice sample:\n{exc.stderr}")
-            return False
+    else:
+        concat_path = CONFIG.TEMP_DIR / "voice_sources.txt"
+        CONFIG.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        concat_path.write_text(
+            "".join(f"file '{source}'\n" for source in sources),
+            encoding="utf-8",
+        )
+        command = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(concat_path),
+            "-ar",
+            "22050",
+            "-ac",
+            "1",
+            "-af",
+            "silenceremove=1:0:-50dB,loudnorm",
+            str(output_path),
+        ]
 
-        print(f"✓ Voice sample ready: {output_path}")
-        return True
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True)
+    except FileNotFoundError:
+        print("ffmpeg was not found. Install it with `brew install ffmpeg` and try again.")
+        return False
+    except subprocess.CalledProcessError as exc:
+        print(f"ffmpeg failed while preprocessing the voice sample:\n{exc.stderr}")
+        return False
+
+    print(f"✓ Voice sample ready: {output_path}")
+    return True

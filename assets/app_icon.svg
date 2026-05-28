@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Persona Chat icon">
+  <rect width="512" height="512" rx="96" fill="#176b87"/>
+  <circle cx="186" cy="204" r="66" fill="#ffffff"/>
+  <path d="M100 390c15-66 65-108 132-108s117 42 132 108" fill="none" stroke="#ffffff" stroke-width="38" stroke-linecap="round"/>
+  <path d="M315 143h65c39 0 70 28 70 63s-31 63-70 63h-18l-43 49v-49h-4c-39 0-70-28-70-63s31-63 70-63z" fill="#c9f3ff"/>
+</svg>

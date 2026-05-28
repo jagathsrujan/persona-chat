@@ -5,12 +5,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-import stt
-import vad
-import audio_utils
 from config import CONFIG
-from llm import PersonaLLM
-from tts import PersonaTTS, play_test_beep
+from services import AudioInputService, ChatSession, SpeechOutputService, format_audio_devices
 
 
 def _is_exit_command(text: str) -> bool:
@@ -92,7 +88,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def read_user_text(input_mode: str) -> str:
+def read_user_text(input_mode: str, audio_input: AudioInputService) -> str:
     """Read one user message from the configured input mode.
 
     Args:
@@ -108,8 +104,7 @@ def read_user_text(input_mode: str) -> str:
         except EOFError:
             return "quit"
 
-    audio = vad.record_until_silence()
-    transcription = stt.transcribe(audio)
+    transcription = audio_input.capture_once()
     if transcription:
         print(f"You: {transcription}")
     return transcription
@@ -127,10 +122,14 @@ def main() -> int:
 
     args = parse_args()
     if args.list_devices:
-        audio_utils.list_audio_devices()
+        print("Audio devices:")
+        print(format_audio_devices(SpeechOutputService.list_devices()))
         return 0
     if args.test_beep:
-        play_test_beep(output_device=args.output_device, playback_backend=args.playback_backend)
+        SpeechOutputService(
+            output_device=args.output_device,
+            playback_backend=args.playback_backend,
+        ).test_beep()
         print("Played test beep.")
         return 0
 
@@ -139,9 +138,10 @@ def main() -> int:
     print("═══════════════════════════════")
 
     try:
-        llm = PersonaLLM()
-        tts = (
-            PersonaTTS(output_device=args.output_device, playback_backend=args.playback_backend)
+        chat = ChatSession()
+        audio_input = AudioInputService()
+        speech_output = (
+            SpeechOutputService(output_device=args.output_device, playback_backend=args.playback_backend)
             if args.output_mode == "voice"
             else None
         )
@@ -158,7 +158,7 @@ def main() -> int:
 
     try:
         while True:
-            user_message = read_user_text(args.input_mode)
+            user_message = read_user_text(args.input_mode, audio_input)
             if not user_message:
                 print("?")
                 continue
@@ -166,16 +166,21 @@ def main() -> int:
             if _is_exit_command(user_message):
                 break
             if _is_reset_command(user_message):
-                llm.reset_history()
+                chat.reset()
                 print("History cleared.")
                 continue
 
-            reply = llm.chat(user_message)
-            if not reply:
+            try:
+                reply = chat.send_message(user_message)
+            except RuntimeError as exc:
+                print(f"LLM error: {exc}")
                 continue
             print(f"Persona: {reply}")
-            if tts is not None:
-                tts.speak(reply)
+            if speech_output is not None:
+                try:
+                    speech_output.speak(reply, status_callback=print)
+                except RuntimeError as exc:
+                    print(f"TTS error: {exc}")
     except KeyboardInterrupt:
         print("\nEnding session.")
 
