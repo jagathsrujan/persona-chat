@@ -25,6 +25,40 @@ Do not commit chat exports, voice samples, or generated persona prompts unless y
 
 ## Setup
 
+### Desktop app
+
+The macOS GUI is the preferred path for non-terminal use. Download the zipped app from
+GitHub Releases, unzip it, and open `Persona Chat.app`.
+
+On first launch, the Setup tab checks local requirements and can guide the full setup:
+
+- install local Ollama and Python assets under the app data directory
+- start the local Ollama server
+- pull the configured base model
+- create `persona.txt` from pasted text or a WhatsApp export
+- normalize one or more voice samples into `voice_samples/speaker.wav`
+- create the local Ollama persona model
+
+The app remains local at runtime. First launch can still take a long time because it
+downloads local model assets.
+
+To run the GUI from a checkout:
+
+```bash
+source .venv/bin/activate
+python gui.py
+```
+
+To build the release zip locally on Apple Silicon macOS:
+
+```bash
+./scripts/build_macos_app.sh
+```
+
+The build output is `dist/Persona-Chat-macos-arm64.zip`.
+
+### Terminal app
+
 Install local Ollama and Python without touching Homebrew:
 
 ```bash

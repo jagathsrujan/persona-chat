@@ -1,5 +1,6 @@
 TTS>=0.22.0
 mlx-whisper>=0.3.0
+PySide6>=6.7.0
 sounddevice>=0.4.6
 soundfile>=0.12.1
 numpy>=1.24.0,<2.0
