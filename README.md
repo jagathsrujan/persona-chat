@@ -1,18 +1,60 @@
 # Persona Chat Local
 
-Fully local persona voice chat for Apple Silicon Macs.
+Persona Chat Local is a private, local-first voice chat app for Apple Silicon Macs. It lets someone build a conversational persona from their own approved text and voice samples, then chat with that persona through a simple desktop interface.
 
-Pipeline:
+The project is designed for people who want an AI voice/chat experience without sending private runtime conversations to cloud APIs.
 
-```text
-Microphone or keyboard -> VAD/STT or text input -> Ollama -> XTTS-v2 -> text or voice output
+## What It Does
+
+- Turns written persona material into a local chat personality.
+- Lets a user talk by typing or using the microphone.
+- Replies with text, voice, or both.
+- Runs the main chat loop locally on the Mac.
+- Keeps private persona files, voice samples, logs, and generated audio out of git.
+
+Think of it as a small desktop companion app that can be trained from user-provided material and then run privately on the same computer.
+
+## Who This Is For
+
+This repo may be useful to:
+
+- HR or hiring reviewers who want to understand the product idea quickly.
+- Developers who want to inspect the local AI pipeline.
+- Privacy-focused users who want local setup instead of cloud runtime calls.
+- Builders experimenting with voice, chat, and personal AI interfaces.
+
+## Simple Workflow
+
+```mermaid
+flowchart LR
+    A["User provides approved persona text"] --> B["App prepares local persona files"]
+    C["User provides optional voice sample"] --> D["App normalizes voice sample"]
+    B --> E["Local persona model"]
+    D --> F["Local voice output"]
+    G["User types or speaks"] --> H["Local chat processing"]
+    H --> E
+    E --> I["Persona reply"]
+    I --> J["Text reply in app"]
+    I --> F
+    F --> K["Spoken reply"]
 ```
 
-No cloud APIs are used at runtime. First-time setup downloads local dependencies and models.
+## Example: Input To Output
 
-## Privacy
+This is a fictional example, not real persona data.
 
-Private persona assets are intentionally ignored by git:
+| Step | Example |
+| --- | --- |
+| User input | "Hey, can you help me plan my day?" |
+| Local processing | The app sends the message to the local persona model on the Mac. |
+| Persona text output | "Sure. Let's keep it simple: pick three important things, then leave room for breaks." |
+| Optional voice output | The app turns the reply into a spoken response using the local voice sample. |
+
+## Privacy In Plain English
+
+The app is built to keep sensitive runtime data local.
+
+Private files are intentionally ignored by git:
 
 - `persona.txt`
 - `Modelfile`
@@ -20,120 +62,62 @@ Private persona assets are intentionally ignored by git:
 - `temp/`
 - `tools/`
 - `.venv/`
+- `build/`
+- `dist/`
 
-Do not commit chat exports, voice samples, or generated persona prompts unless you have permission and understand the privacy risk.
+Do not commit real chat exports, private voice samples, generated audio, persona prompts, local model folders, or app build outputs unless you fully understand the privacy risk.
 
-## Setup
+## Try The App
 
-### Desktop app
+The preferred non-technical path is the macOS desktop app:
 
-The macOS GUI is the preferred path for non-terminal use. Download the zipped app from
-GitHub Releases, unzip it, and open `Persona Chat.app`.
+1. Download the release zip from GitHub Releases.
+2. Unzip it.
+3. Open `Persona Chat.app`.
+4. Use the Setup tab to prepare local requirements and persona assets.
 
-On first launch, the Setup tab checks local requirements and can guide the full setup:
+First setup can take a while because the app downloads local model assets.
 
-- install local Ollama and Python assets under the app data directory
-- start the local Ollama server
-- pull the configured base model
-- create `persona.txt` from pasted text or a WhatsApp export
-- normalize one or more voice samples into `voice_samples/speaker.wav`
-- create the local Ollama persona model
+## Build The App Locally
 
-The app remains local at runtime. First launch can still take a long time because it
-downloads local model assets.
+On Apple Silicon macOS:
 
-To run the GUI from a checkout:
+```bash
+./scripts/build_macos_app.sh
+```
+
+This builds the macOS app bundle and release zip:
+
+```text
+dist/Persona Chat.app
+dist/Persona-Chat-macos-arm64.zip
+```
+
+## Run From A Checkout
+
+For development or terminal use:
 
 ```bash
 source .venv/bin/activate
 python gui.py
 ```
 
-To build the release zip locally on Apple Silicon macOS:
+Text-only terminal mode:
 
 ```bash
-./scripts/build_macos_app.sh
-```
-
-The build output is `dist/Persona-Chat-macos-arm64.zip`.
-
-### Terminal app
-
-Install local Ollama and Python without touching Homebrew:
-
-```bash
-./scripts/install_ollama_local.sh
-./scripts/install_python_local.sh
-```
-
-Create your persona input:
-
-```bash
-cp persona.example.txt persona.txt
-```
-
-Add a voice sample:
-
-```bash
-mkdir -p voice_samples
-# put one or more .ogg/.opus/.wav/.mp3/.m4a/.flac files in voice_samples/raw/
-```
-
-For WhatsApp exports, extract one speaker's messages:
-
-```bash
-python scripts/extract_whatsapp_persona.py "/path/to/WhatsApp Chat.txt" persona.txt "Speaker Name"
-```
-
-Run setup:
-
-```bash
-./setup.sh
-```
-
-When prompted by `persona_builder.py`, enter the persona name and confirm the generated prompt.
-
-## Start Ollama
-
-In one terminal:
-
-```bash
-./tools/Ollama.app/Contents/Resources/ollama serve
-```
-
-Leave it open.
-
-## Run
-
-In another terminal:
-
-```bash
-source .venv/bin/activate
 python main.py --input text --output text
 ```
 
-Useful modes:
+Voice mode with macOS playback:
 
 ```bash
 python main.py --input text --output voice --playback afplay
-python main.py --input voice --output text
-python main.py --input voice --output voice --playback afplay
 ```
 
-Test audio routing before voice output:
+## Technical Details
 
-```bash
-python main.py --test-beep --playback afplay
-```
+Developers can read the full technical workflow here:
 
-List sounddevice devices:
+[TECHNICAL_README.md](TECHNICAL_README.md)
 
-```bash
-python main.py --list-devices
-```
-
-## Notes
-
-- XTTS-v2 can take several seconds per response.
-- `--output text` skips loading XTTS and starts faster.
-- On macOS, `--playback afplay` follows the system-selected output device.
+It covers the architecture, setup internals, runtime data flow, packaging process, and troubleshooting notes.
